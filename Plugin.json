@@ -1,0 +1,40 @@
+{
+    "PluginName": "MyDreamMoments",
+    "DependentLibraries": null,
+    "PluginIcon": null,
+    "PluginAuthor": "umaru、AEBC08(插件作者)",
+    "MainPyName": "Main",
+    "PluginDescription": "My Dream Moments 是一个基于大型语言模型(LLM)的情感陪伴程序, 提供更真实的情感交互体验",
+    "EnablePlugin": true,
+    "DeepSeekApiUrl": "https://api.siliconflow.cn/v1/chat/completions",
+    "DeepSeekApiKey": "sk-",
+    "DeepSeekModel": "deepseek-ai/DeepSeek-V3",
+    "DeepSeekMaxToken": 2000,
+    "DeepSeekTemperature": 1.2,
+
+    "Help": [
+        {
+            "Class": "Atri",
+            "Commands": [
+                {
+                    "Command": "/Atri + [空格] + [内容]",
+                    "Content": "与 Atri 进行聊天"
+                },
+                {
+                    "Command": "/Atri新的会话",
+                    "Content": "清除 Atri 的聊天记录, 开始新的会话"
+                }
+            ]
+        },
+        {
+            "Class": "DeepSeek设置(仅 Bot 管理员可用)",
+            "AdminUse": true,
+            "Commands": [
+                {
+                    "Command": "/DeepSeekApiKey + [空格] + [ApiKey]",
+                    "Content": "设置 DeepSeek 的 ApiKey(警告: ApiKey 是很重要的东西, 请不要在群聊内设置 ApiKey, 发在群聊内可能会被他人恶意利用!!!)"
+                }
+            ]
+        }
+    ]
+}
