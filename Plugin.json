@@ -2,7 +2,7 @@
     "PluginName": "MyDreamMoments",
     "DependentLibraries": null,
     "PluginIcon": null,
-    "PluginAuthor": "umaru、AEBC08(插件作者)",
+    "PluginAuthor": "umaru、AEBC08(插件作者)、Tsukumi",
     "MainPyName": "Main",
     "PluginDescription": "My Dream Moments 是一个基于大型语言模型(LLM)的情感陪伴程序, 提供更真实的情感交互体验",
     "EnablePlugin": true,
