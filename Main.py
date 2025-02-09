@@ -1,9 +1,13 @@
 import json
 import os
 import requests
+import time
+from collections import deque  # 添加deque用于实现队列
 
 flora_api = {}  # 顾名思义,FloraBot的API,载入(若插件已设为禁用则不载入)后会赋值上
 
+current_user = None  # 当前正在处理的用户ID
+request_queue = deque()  # 请求等待队列
 
 def occupying_function(*values):  # 该函数仅用于占位,并没有任何意义
     pass
@@ -20,10 +24,11 @@ ds_temperature = 1.2
 
 prompt_content = ""
 atri_history_msgs = {}
+bot_id = 0
 
 
 def init():  # 插件初始化函数,在载入(若插件已设为禁用则不载入)或启用插件时会调用一次,API可能没有那么快更新,可等待,无传入参数
-    global send_msg, call_api, administrator, ds_api_url, ds_api_key, ds_model, ds_max_token, ds_temperature, prompt_content, atri_history_msgs
+    global send_msg, call_api, administrator, ds_api_url, ds_api_key, ds_model, ds_max_token, ds_temperature, prompt_content, atri_history_msgs, bot_id
     with open(f"{flora_api.get('ThePluginPath')}/Plugin.json", "r", encoding="UTF-8") as open_plugin_config:
         plugin_config = json.loads(open_plugin_config.read())
         ds_api_url = plugin_config.get("DeepSeekApiUrl")
@@ -34,6 +39,7 @@ def init():  # 插件初始化函数,在载入(若插件已设为禁用则不载
     send_msg = flora_api.get("SendMsg")
     call_api = flora_api.get("CallApi")
     administrator = flora_api.get("Administrator")
+    bot_id = flora_api.get("BotID")
     with open(f"{flora_api.get('ThePluginPath')}/Prompt.md", "r", encoding="UTF-8") as open_prompt_content:
         prompt_content = open_prompt_content.read()
     if os.path.isfile(f"{flora_api.get('ThePluginPath')}/AtriHistoryMessages.json"):
@@ -56,60 +62,109 @@ def deepseek(msgs: list):
     pass
 
 
+def process_next_request():
+    global current_user
+    if request_queue:
+        next_request = request_queue.popleft()
+        current_user = next_request["uid"]
+        process_message(next_request)
+
+
+def process_message(request_data):
+    global current_user
+    try:
+        send_type = request_data["send_type"]
+        uid = request_data["uid"]
+        gid = request_data["gid"]
+        mid = request_data["mid"]
+        msg = request_data["msg"]
+        ws_client = request_data["ws_client"]
+        ws_server = request_data["ws_server"]
+        send_host = request_data["send_host"]
+        send_port = request_data["send_port"]
+        
+        get_mid = send_msg(send_type, "少女祈祷中...", uid, gid, mid, ws_client, ws_server, send_host, send_port)
+        msgs = []
+        str_uid = str(uid)
+        if str_uid in atri_history_msgs:
+            msgs = atri_history_msgs.get(str_uid)
+        else:
+            msgs.append({"role": "system", "content": prompt_content})
+        msgs.append({"role": "user", "content": msg})
+        ds_msg = deepseek(msgs)
+        if type(ds_msg) is str:
+            msgs.pop()
+            if get_mid is not None:
+                call_api(send_type, "delete_msg", {"message_id": get_mid.get("data").get("message_id")}, ws_client, ws_server, send_host, send_port)
+            send_msg(send_type, f"异常: {ds_msg}", uid, gid, None, ws_client, ws_server, send_host, send_port)
+        else:
+            msgs.append(ds_msg)
+            atri_history_msgs.update({str_uid: msgs})
+            if get_mid is not None:
+                call_api(send_type, "delete_msg", {"message_id": get_mid.get("data").get("message_id")}, ws_client, ws_server, send_host, send_port)
+            
+            content = ds_msg.get("content")
+            messages = [msg.strip() for msg in content.split("\\") if msg.strip()]
+            for i, split_msg in enumerate(messages):
+                current_mid = mid if i == 0 else None
+                send_msg(send_type, split_msg, uid, gid, current_mid, ws_client, ws_server, send_host, send_port)
+                delay_time = len(split_msg) * 0.1
+                delay_time = min(delay_time, 3.0)
+                time.sleep(delay_time)
+                
+            with open(f"{flora_api.get('ThePluginPath')}/AtriHistoryMessages.json", "w", encoding="UTF-8") as open_history_msgs:
+                open_history_msgs.write(json.dumps(atri_history_msgs, ensure_ascii=False))
+    finally:
+        current_user = None
+        process_next_request()
+
+
 def event(data: dict):  # 事件函数,FloraBot每收到一个事件都会调用这个函数(若插件已设为禁用则不调用),传入原消息JSON参数
-    global ds_api_url, ds_api_key
+    global ds_api_url, ds_api_key, current_user
     send_type = data.get("SendType")
     send_address = data.get("SendAddress")
     ws_client = send_address.get("WebSocketClient")
     ws_server = send_address.get("WebSocketServer")
     send_host = send_address.get("SendHost")
     send_port = send_address.get("SendPort")
-    uid = data.get("user_id")  # 事件对象QQ号
-    gid = data.get("group_id")  # 事件对象群号
-    mid = data.get("message_id")  # 消息ID
-    msg = data.get("raw_message")  # 消息内容
+    uid = data.get("user_id")
+    gid = data.get("group_id")
+    mid = data.get("message_id")
+    msg = data.get("raw_message")
+
     if msg is not None:
-        msg = msg.replace("&#91;", "[").replace("&#93;", "]").replace("&amp;", "&").replace("&#44;", ",")  # 消息需要将URL编码替换到正确内容
-        if msg.startswith("/Atri "):
+        msg = msg.replace("&#91;", "[").replace("&#93;", "]").replace("&amp;", "&").replace("&#44;", ",")
+        if msg.startswith("/Atri ") or (f"[CQ:at,qq={bot_id}] " in msg):
             if ds_api_key == "" or ds_api_key is None:
+
                 send_msg(send_type, "异常: ApiKey 为空, 无法调用 DeepSeek\n\n可以去修改插件配置文件进行设置 ApiKey, 也使用以下指令进行设置 ApiKey(警告: ApiKey 是很重要的东西, 请不要在群聊内设置 ApiKey, 发在群聊内可能会被他人恶意利用!!!):\n/DeepSeekApiKey + [空格] + [ApiKey]", uid, gid, None, ws_client, ws_server, send_host, send_port)
+                return
+
+            msg = msg.replace("/Atri ", "", 1).replace(f"[CQ:at,qq={bot_id}]", "", 1)
+            if msg == "" or msg.isspace():
+                send_msg(send_type, "内容不能为空", uid, gid, mid, ws_client, ws_server, send_host, send_port)
+                return
+
+            request_data = {
+                "send_type": send_type,
+                "uid": uid,
+                "gid": gid,
+                "mid": mid,
+                "msg": msg,
+                "ws_client": ws_client,
+                "ws_server": ws_server,
+                "send_host": send_host,
+                "send_port": send_port
+            }
+
+            if current_user is None:
+                current_user = uid
+                process_message(request_data)
             else:
-                msg = msg.replace("/Atri ", "", 1)
-                if msg == "" or msg.isspace():
-                    send_msg(send_type, "内容不能为空", uid, gid, mid, ws_client, ws_server, send_host, send_port)
-                else:
-                    get_mid = send_msg(send_type, "回答可能需要点时间，请耐心等待...", uid, gid, mid, ws_client, ws_server, send_host, send_port)
-                    msgs = []
-                    str_uid = str(uid)
-                    if str_uid in atri_history_msgs:
-                        msgs = atri_history_msgs.get(str_uid)
-                    else:
-                        msgs.append({"role": "system", "content": prompt_content})
-                    msgs.append({"role": "user", "content": msg})
-                    ds_msg = deepseek(msgs)
-                    if type(ds_msg) is str:
-                        msgs.pop()
-                        if get_mid is not None:
-                            # noinspection PyUnresolvedReferences
-                            call_api(send_type, "delete_msg", {"message_id": get_mid.get("data").get("message_id")}, ws_client, ws_server, send_host, send_port)
-                        send_msg(send_type, f"异常: {ds_msg}", uid, gid, None, ws_client, ws_server, send_host, send_port)
-                    else:
-                        msgs.append(ds_msg)
-                        atri_history_msgs.update({str_uid: msgs})
-                        if get_mid is not None:
-                            # noinspection PyUnresolvedReferences
-                            call_api(send_type, "delete_msg", {"message_id": get_mid.get("data").get("message_id")}, ws_client, ws_server, send_host, send_port)
-                        
-                        # 分割消息并逐个发送
-                        content = ds_msg.get("content")
-                        messages = [msg.strip() for msg in content.split("\\") if msg.strip()]
-                        for i, split_msg in enumerate(messages):
-                            # 只有第一条消息保持回复形式，后续消息设置 mid 为 None
-                            current_mid = mid if i == 0 else None
-                            send_msg(send_type, split_msg, uid, gid, current_mid, ws_client, ws_server, send_host, send_port)
-                            
-                        with open(f"{flora_api.get('ThePluginPath')}/AtriHistoryMessages.json", "w", encoding="UTF-8") as open_history_msgs:
-                            open_history_msgs.write(json.dumps(atri_history_msgs, ensure_ascii=False))
+                # queue_position = len(request_queue) + 1
+                request_queue.append(request_data)
+                # send_msg(send_type, f"先来后到喵，你排在第{queue_position}位，请稍等一下喵~", uid, gid, mid, ws_client, ws_server, send_host, send_port)
+
         elif msg == "/Atri新的会话":
             atri_history_msgs.pop(str(uid))
             with open(f"{flora_api.get('ThePluginPath')}/AtriHistoryMessages.json", "w", encoding="UTF-8") as open_history_msgs:
