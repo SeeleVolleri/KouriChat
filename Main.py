@@ -99,7 +99,15 @@ def event(data: dict):  # 事件函数,FloraBot每收到一个事件都会调用
                         if get_mid is not None:
                             # noinspection PyUnresolvedReferences
                             call_api(send_type, "delete_msg", {"message_id": get_mid.get("data").get("message_id")}, ws_client, ws_server, send_host, send_port)
-                        send_msg(send_type, ds_msg.get("content"), uid, gid, mid, ws_client, ws_server, send_host, send_port)
+                        
+                        # 分割消息并逐个发送
+                        content = ds_msg.get("content")
+                        messages = [msg.strip() for msg in content.split("\\") if msg.strip()]
+                        for i, split_msg in enumerate(messages):
+                            # 只有第一条消息保持回复形式，后续消息设置 mid 为 None
+                            current_mid = mid if i == 0 else None
+                            send_msg(send_type, split_msg, uid, gid, current_mid, ws_client, ws_server, send_host, send_port)
+                            
                         with open(f"{flora_api.get('ThePluginPath')}/AtriHistoryMessages.json", "w", encoding="UTF-8") as open_history_msgs:
                             open_history_msgs.write(json.dumps(atri_history_msgs, ensure_ascii=False))
         elif msg == "/Atri新的会话":
