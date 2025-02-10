@@ -32,7 +32,78 @@
 
 ## 如何运行项目
 
-### 1. 前期准备
+### 这里是QQ分支~
+
+#### Windows
+
+前期准备:
+
+1. **QQ小号**  
+   - NapCat是目前较为安全的机器人后端
+
+2. **DeepSeek API Key**  
+   - 硅基流动：[获取 API Key（15元免费额度）](https://cloud.siliconflow.cn/i/nTXFQjY5)
+
+在[Releases · NapNeko/NapCatQQ](https://github.com/NapNeko/NapCatQQ/releases/)下载[**Win64无头**]一键包。解压后运行napcat.bat，根据提示扫码登陆。
+
+<img src="https://i.ibb.co/35xzZMjv/image-20250210150629365.png" style="zoom:33%;" />
+
+之后在终端找到带有token的webui链接。建议修改默认token(密码).
+
+进入你想安装 FloraBot 的目录中, 然后运行以下命令(请使用 PowerShell 来运行):（[FloraBotTeam/FloraBot-Installer: FloraBot 的一键安装脚本](https://github.com/FloraBotTeam/FloraBot-Installer)）
+
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/FloraBotTeam/FloraBot-Installer/main/WindowsInstaller.ps1" -OutFile "WindowsInstaller.ps1"; powershell -File WindowsInstaller.ps1; Remove-Item WindowsInstaller.ps1
+```
+
+如果网络不好，运行：
+
+```powershell
+Invoke-WebRequest -Uri "https://github.moeyy.xyz/https://raw.githubusercontent.com/FloraBotTeam/FloraBot-Installer/main/WindowsInstaller.ps1" -OutFile "WindowsInstaller.ps1"; powershell -File WindowsInstaller.ps1; Remove-Item WindowsInstaller.ps1
+```
+
+
+
+根据提示完成后，启动脚本为 Run.bat, 运行该脚本即可启动 FloraBot。配置目录下的`Config.json`。把`ConnectionType`的值改为**`WebSocket`**,这样方便配置.在`BotID`把0换为机器人QQ号,在`Administrator`把0换为管理员QQ号,可以写多个.
+
+在[umaru-233/My-Dream-Moments at QQ-FloraBotPlugin](https://github.com/umaru-233/My-Dream-Moments/tree/QQ-FloraBotPlugin)点击Code - Download ZIP,解压后的插件放在Plugins目录.最后的目录结构类似:
+
+```
+D:\Apps\FloraBot\FloraBot\Plugins\My-Dream-Moments-QQ-FloraBotPlugin\Main.py...
+```
+
+插件目录有Plugin.json.在DeepSeekApiUrl, DeepSeekApiKey, DeepSeekModel键值对配置自己的api即可.其他配置按需要调整.
+
+回到NapCat的webui.在 网络配置 栏新建一个WebSocket客户端.默认端口和flora一样都是3003不用改动.
+
+<img src="https://i.ibb.co/TB551Gk5/image.png" style="zoom: 33%;" />
+
+启动ws客户端后,重新运行florabot的Run.bat.你应该可以看见类似的输出:
+
+```
+正在加载插件, 请稍后...
+正在加载插件 MyDreamMoments ...
+框架连接方式为: WebSocket
+MyDreamMoments 加载成功
+框架已通过 WebSocket 连接, 连接ID: 1
+```
+
+这样就可以在群聊或者私聊使用命令和机器人聊天了.具体可以发送
+
+```
+/帮助
+/帮助 MyDreamMoments
+```
+
+查看. 群聊内也可以使用@进行聊天.
+
+目前qq插件尚在开发中,本文仅供学习参考~
+
+原文链接:[使用NapCat与FloraBot部署对接DeepSeek的QQ聊天机器人（老婆） | 独立遗世的理想乡](https://mondavalon.github.io/posts/8bfef174/)
+
+### 微信分支
+
+#### 1. 前期准备
 1. **备用手机/安卓模拟器**  
    - 微信电脑端登录必须有一个移动设备同时登录，因此不能使用您的主要设备。
    
@@ -44,7 +115,7 @@
 
 ---
 
-### 2. 部署项目
+#### 2. 部署项目
 1. **克隆本仓库**  
    ```bash
    git clone <仓库地址>
@@ -57,12 +128,14 @@
 4. 运行<code>bot.py</code>
    ```bash
    python bot.py
-### 3. 如何使用
+   ```
+#### 3. 如何使用
 1. **项目运行后，根目录下会生成 <code>QR.png</code>。**
    - 使用您想作为 bot 的微信号扫码登录。
    - 如果控制台没有响应，请重启项目以刷新二维码并重新登录。
 2. **当控制台提示 <code>Start auto replying.</code> 时，表示程序已成功运行。您可以在微信上与 bot 对话测试效果。**
-## 如果您想修改prompt
+
+### 如果您想修改prompt
 - 项目根目录下的 <code>prompt.md</code> 可以编辑，修改后重启项目生效。
 - 注意：请不要修改与反斜线 <code> \ </code>相关的 prompt，因为它们被用于分段回复消息。
 ## 赞助
